@@ -1,0 +1,110 @@
+<!DOCTYPE HTML>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+    <title>Wolf - @CPU - 2017</title>
+    <!--
+
+     JSGB v0.02 - a JavaScript Nintendo GameBoy Emulator
+     Copyright (C) 2009 Pedro Ladaria <Sonic1980 at Gmail dot com>
+
+     This program is free software; you can redistribute it and/or
+     modify it under the terms of the GNU General Public License
+     version 2 as published by the Free Software Foundation.
+     The full license is available at http://www.gnu.org/licenses/gpl.html
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+    -->
+    <script src="toolbox.js" type="application/x-javascript"></script>
+    <script src="scrollbar.js" type="application/x-javascript"></script>
+    <script src="jsgb.cpu.js" type="application/x-javascript"></script>
+    <script src="jsgb.memory.js" type="application/x-javascript"></script>
+    <script src="jsgb.rom.js" type="application/x-javascript"></script>
+    <script src="jsgb.interrupts.js" type="application/x-javascript"></script>
+    <script src="jsgb.input.js" type="application/x-javascript"></script>
+    <script src="jsgb.lcd.js" type="application/x-javascript"></script>
+    <script src="jsgb.timers.js" type="application/x-javascript"></script>
+    <script src="jsgb.debugger.js" type="application/x-javascript"></script>
+    <script src="jsgb.gameboy.js" type="application/x-javascript"></script>
+    <link href="jsgb.styles.css" rel="stylesheet" type="text/css" />
+  </head>
+<body>
+  <div class="C">
+    <canvas style="display:none;" id="LCD" width="160" height="144"></canvas>
+    <canvas id="BUFFER" width="640" height="576"></canvas>
+  </div>
+
+  <!--
+  <div id="FOOTER" class="CLR C">
+    <div class="IB L">
+      <strong>X</strong>: Button A<br/>
+      <strong>Z</strong>: Button B<br/>
+      <strong>A</strong>: Start<br/>
+      <strong>S</strong>: Select<br/>
+      <strong>&larr; &uarr; &rarr; &darr;</strong>
+    </div>
+    <br/>
+    <br/>
+  </div>
+  -->
+
+  <script type="application/x-javascript">
+
+    var gbSeconds = 0;
+    var gbFrames  = 0;
+    var canvas;
+    var ctx;
+
+    function gb_Resize_LCD() {
+      if ($('BX').value=='Size x2') {
+        $('BX').value='Size x3';
+        $('LCD').style.width='320px';
+        $('LCD').style.height='288px';
+      }
+      else if ($('BX').value=='Size x3') {
+      }
+      else {
+        $('BX').value='Size x2';
+        $('LCD').style.width='160px';
+        $('LCD').style.height='144px';
+      }
+    }
+
+  function gb_Show_Fps() { }
+
+  function gb_Toggle_Debugger(show) {
+    $('DEBUGGER').style.height=(show)?'auto':'0px';
+  }
+
+  function run () {
+    requestAnimationFrame(run);
+    ctx.imageSmoothingEnabled = false;
+    ctx.oImageSmoothingEnabled = false;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.save();
+    ctx.scale(4, 4);
+    ctx.drawImage(gbLCDCtx.canvas, 0, 0);
+    ctx.restore();
+  }
+
+  window.onload = function() {
+    canvas = document.getElementById("BUFFER"),
+    ctx = canvas.getContext('2d');
+    gb_Insert_Cartridge('wolf.gb', false);
+    gb_Run();
+    run();
+  }
+
+  </script>
+  <center>
+    <footer style="bottom:0px; position: fixed;width:100%; padding-bottom: 20px;">
+      <a href="http://sourceforge.net/projects/jsgbemu/" target="_blank">Powered by JSGB v.0.02: a JavaScript Nintendo GameBoy Emulator and Debugger</a>
+    </footer>
+  </center>
+</body>
+</html>
