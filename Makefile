@@ -32,8 +32,11 @@ ROM_NAME = wolf
 
 INCDIR = inc
 SRCDIR = src
+
+SOURCES=$(wildcard $(SRCDIR)/*.asm)
+
 # TODO@(cpu): Replace this with a dynamic find of *.asm in the src/ directory
-SOURCES = $(SRCDIR)/memory.asm $(SRCDIR)/wolf.asm $(SRCDIR)/engine_init.asm $(SRCDIR)/lcd.asm $(SRCDIR)/engine.asm $(SRCDIR)/tiles.asm $(SRCDIR)/game.asm $(SRCDIR)/map.asm $(SRCDIR)/splash_screen.asm $(SRCDIR)/world_zero.asm
+#SOURCES = $(SRCDIR)/memory.asm $(SRCDIR)/wolf.asm $(SRCDIR)/engine_init.asm $(SRCDIR)/lcd.asm $(SRCDIR)/engine.asm $(SRCDIR)/tiles.asm $(SRCDIR)/game.asm $(SRCDIR)/map.asm $(SRCDIR)/splash_screen.asm $(SRCDIR)/world_zero.asm
 
 FIX_FLAGS = -v -p 0
 OBJECTS = $(SOURCES:%.asm=%.o)
@@ -45,7 +48,7 @@ $(ROM_NAME): $(OBJECTS)
 	$(FIX) $(FIX_FLAGS) $@.gb
 
 %.o: %.asm
-	$(ASM) -i$(INCDIR)/ -o $@ $<
+	$(ASM) -i $(INCDIR)/ -o $@ $<
 
 clean:
 	rm $(ROM_NAME).gb $(ROM_NAME).sym $(OBJECTS)
