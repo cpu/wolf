@@ -76,9 +76,59 @@ game_tick_return::
   pop hl
   ret
 
-
 ; read_joypad does a thing
 read_joypad:
+  push af
+  push bc
+.save_oldstate:
+    ; Save the current button state to prev button state before clobbering it
+    ld a, [BUTTON_STATE]
+    ld [PREV_BUTTON_STATE], a
+.read_dpad:
+    ; Start by reading the D-Pad "row" of inputs
+    ld a, $20
+    ; Select the input row
+    ld [rP1], a
+    ; Read the input row - this is done twice, seemingly everyone does this for
+    ; "proper results". Some kind of primative debounce?
+    ; TODO@(cpu): Resolve this mystery
+    ld a, [rP1]
+    ld a, [rP1]
+    ; We only need the lower half of the byte for the d-pad buttons. We also
+    ; want to be able to combine the dpad states with the button states into one
+    ; state byte, so, do the work required to shift these lower bits into the
+    ; upper half of the byte.
+    cpl
+    and $0F
+    swap a
+    ; Store the dpad inputs into B
+    ld b, a 
+.read_buttons:
+    ; Target the button "row" of inputs
+    ld a, $10
+    ; Select the input row
+    ld [rP1], a
+    ; Read the input row - again, this is done many times but its not clear if
+    ; that is required.
+    ld a, [rP1]
+    ld a, [rP1]
+    ; We only need the lower half of the byte, so mask that out of A
+    cpl
+    and $0f
+.combine_state:
+    ; Combine the button state (in A) with the dpad state (in B)
+    or b
+.save_state:
+    ; Set the new button state from the value in A
+    ld [BUTTON_STATE], a
+.clear_joypad:
+    ; Reset the joypad input row
+    ld a, $30
+    ; Select the input row
+    ld [rP1], a
+.finished:
+  pop bc
+  pop af
   ret
 
 ; change_screens checks if a NEXT_SCREEN was requested during the current screen
