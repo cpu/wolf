@@ -28,28 +28,41 @@ GBTD = $(WINE) $(TOOLS_ROOT)/gbtd.exe
 # data. It is companion software for GBTD. See above for details.
 GBMB = $(WINE) $(TOOLS_ROOT)/gbmb.exe
 
+# Output ROM filename
 ROM_NAME = wolf
 
+# Includes directory
 INCDIR = inc
+
+# ASM source directory
 SRCDIR = src
 
-SOURCES=$(wildcard $(SRCDIR)/*.asm)
+# Sources is populated with all of the *.asm files in SRCDIR as well as all of
+# the *.asm files in any of the subdirectories of SRCDIR (recursively)
+SOURCES = $(wildcard $(SRCDIR)/*.asm) $(wildcard $(SRCDIR)/**/*.asm)
 
-# TODO@(cpu): Replace this with a dynamic find of *.asm in the src/ directory
-#SOURCES = $(SRCDIR)/memory.asm $(SRCDIR)/wolf.asm $(SRCDIR)/engine_init.asm $(SRCDIR)/lcd.asm $(SRCDIR)/engine.asm $(SRCDIR)/tiles.asm $(SRCDIR)/game.asm $(SRCDIR)/map.asm $(SRCDIR)/splash_screen.asm $(SRCDIR)/world_zero.asm
-
+# Flags for rgbfix:
+#   -v = validate header and fix checksums
+#   -p 0 = pad image with 0 byte
 FIX_FLAGS = -v -p 0
+
+# Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
 
-all: $(ROM_NAME)
-
-$(ROM_NAME): $(OBJECTS)
-	$(LINK) -o $@.gb -n $@.sym $(OBJECTS)
-	$(FIX) $(FIX_FLAGS) $@.gb
-
+# Build objects by assembling them from source
 %.o: %.asm
+# Assemble the source files, specifying the configured inc dir
 	$(ASM) -i $(INCDIR)/ -o $@ $<
 
+# Build the ROM by linking the built objects and fixing the ROM
+$(ROM_NAME): $(OBJECTS)
+# Link the assembled objects, outputting to ROM_NAME.gb, writing a symfile to
+# ROM_NAME.sym
+	$(LINK) -o $@.gb -n $@.sym $(OBJECTS)
+# Fix the ROM header/checksums
+	$(FIX) $(FIX_FLAGS) $@.gb
+
+# Clean out build artifacts
 clean:
 	rm $(ROM_NAME).gb $(ROM_NAME).sym $(OBJECTS)
 
@@ -64,3 +77,6 @@ map:
 # Run BGB to emulate/debug the built game ROM
 debug:
 	$(BGB) $(ROM_NAME).gb&
+
+# Build the ROM
+all: $(ROM_NAME)
