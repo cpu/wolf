@@ -17,7 +17,7 @@ Play Wolf in your browser using the
 [jsgbemu](https://sourceforge.net/projects/jsgbemu/) emulator:
 
 [![Play
-Wolf](https://binaryparadox.net/d/wolf/index.html)](https://binaryparadox.net/d/906c1e6f-ab5a-4c41-b56b-4098fcf6ce31.jpg)
+Wolf](https://binaryparadox.net/d/906c1e6f-ab5a-4c41-b56b-4098fcf6ce31.jpg)](https://binaryparadox.net/d/wolf/index.html)
 
 **Note:** Wolf is 100000% not finished so "playing" is a huge overstatement.
 
@@ -48,9 +48,9 @@ By default the `Makefile` assumes all development tools are kept in the
 1. Run `make debug`
 
 **Pro-tip:** BGB can be configured to automatically break on many conditions
-that can happen when your code is buggy. Enable *all* of the possible debugger
-exceptions that can be found under BGB's *preferences window* under the
-*Exceptions* tab:
+that can happen when your code is buggy. Enable **all** of the possible debugger
+exceptions that can be found under the **bgp control panel** under the
+**Exceptions** tab:
 
 ![BGB Exceptions
 Configuration](https://binaryparadox.net/d/548a91cf-d399-4db2-8035-472a36b486c6.jpg)
