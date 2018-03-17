@@ -120,6 +120,8 @@ update_player:
 .check_falling:
     ; Update the player state to falling or standing based on the ground tile
     call check_ground_tile
+.check_input:
+    call check_input
     ; Apply gravity
     call apply_gravity
 .check_death:
@@ -135,9 +137,56 @@ update_player:
   pop af
   ret
 
+; check_input checks for button presses
+check_input:
+  push af
+.check_a_button:
+    ; Put the current button state into the accumulator
+    ld a, [BUTTON_STATE]
+    ; Check if the A button is pressed
+    ; TODO(@cpu): Const this
+    and $1
+    jp z, .finish
+.a_pressed:
+    ; check if the player is already jumping
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_JUMPING
+    ; if they are, skip
+    jp z, .finish
+    call player_jump
+.finish:
+  pop af
+  ret
+
+; player_jump is called when the A button is pressed to start a jump
+player_jump:
+  push af
+    ; Set the player state to jumping
+    ld a, PLAYER_STATE_JUMPING
+    ld [PLAYER_STATE], a
+    ; Set the window to moving
+    ld a, $01
+    ld [WINDOW_MOVING], a
+    ; Move the player's Y up by 1
+    ld a, [PLAYER_Y]
+    dec a
+    ld [PLAYER_Y], a
+    ; Update the sprite's Y by 8
+    ; Put the start address of the SHADOW_OAM into HL. The player sprite is the
+    ; first entry of the SHADOW_OAM by convention.
+    ld hl, SHADOW_OAM
+    ; Load the Y position of the first sprite into the accumulator
+    ld a, [hl]
+    ; Add -8 to the accumulator
+    add a, -$08
+    ; Put the new Y position into the sprite Y location
+    ld [hl], a
+  pop af
+  ret
+
 ; check_ground_tile puts the map tile # in the position directly below the
 ; player into the HL register
-check_ground_tile::
+check_ground_tile:
   push hl
   push de
   push af
@@ -163,6 +212,9 @@ check_ground_tile::
     ; Set the player to be standing
     ld a, PLAYER_STATE_STANDING
     ld [PLAYER_STATE], a
+    ; Set the window to moving
+    ld a, $01
+    ld [WINDOW_MOVING], a
 .finish
   pop af
   pop de
