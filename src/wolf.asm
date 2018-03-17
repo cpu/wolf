@@ -70,6 +70,9 @@ PLAYER_STATE:: ds 1
 
 ; Current Window X (Tile number)
 WINDOW_X:: ds 1
+
+; Is the Window supposed to be moving?
+WINDOW_MOVING:: ds 1
 variables_end::
 
 ; ROM entrypoint, jump to begin

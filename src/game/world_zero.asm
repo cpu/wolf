@@ -25,43 +25,8 @@ world_zero_init::
 ; responsible for mutating the world by updating variables and shadow_oam
 ; contents
 world_zero_tick::
-  push af
-.player_state_update:
-    ; Put the current player state into the accumulator
-    ld a, [PLAYER_STATE]
-    ; Check if the player is in the falling state. If they are we don't change the
-    ; window state
-    cp a, PLAYER_STATE_FALLING
-    jp z, .gravity
-.window_state_update:
-    ; TODO(@cpu): Should probably check that the tile ahead is not solid here and
-    ; act accordingly?
-
-    ; Advance the window position by loading the current WINDOW_X into the
-    ; accumulator, incrementing it, and then writing it back to the WINDOW_X
-    ; register.
-    ld a, [WINDOW_X]
-    inc a
-    ld [WINDOW_X], a
-    ; If the new WINDOW_X (still in the accumulator) is < 32, move the window
-    cp 32
-    jp nz, .move_window
-    ; Otherwise wrap the WINDOW_X to 0 and then move the window
-    ld a, 0
-    ld [WINDOW_X], a
-.move_window:
-    ; Get the current window X position
-    ld a, [rSCX]
-    ; Increment it by $08 to move one tile forward
-    add a, $08
-    ; Move the window
-    ld [rSCX], a
-.gravity:
-    ; Apply gravity to the player, changing their state to falling if needed
-    call apply_gravity
-    ; End the tick
-.end_tick
-  pop af
+  call update_player
+  call move_window
   jp game_tick_return
 
 ; variables_init clears variables for a fresh start
@@ -75,6 +40,16 @@ variables_init:
     ld [PLAYER_X], a
     ld a, DEFAULT_PLAYER_Y
     ld [PLAYER_Y], a
+    ; Start the player in standing state
+    ld a, PLAYER_STATE_STANDING
+    ld [PLAYER_STATE], a
+    ; The window should be moving when world zero starts
+    ld a, $01
+    ld [WINDOW_MOVING], a
+    ; The current and prev button state should be cleared
+    ld a, $00
+    ld [BUTTON_STATE], a
+    ld [PREV_BUTTON_STATE], a
   pop af
   ret
 
@@ -136,49 +111,75 @@ sprite_init:
 
   ret
 
-; apply_gravity is called when the PLAYER_STATE is equal to PLAYER_STATE_FALLING
-; TODO(@cpu): Break out the parts that update the state from the parts that do
-;             movement. This function is tooooooo long
-apply_gravity:
+; update_player checks the current player state and updates the player position
+; accordingly
+update_player:
+  push af
+    ; Check if the player is on ground - this will place the player into either
+    ; state standing or falling
+.check_falling:
+    ; Update the player state to falling or standing based on the ground tile
+    call check_ground_tile
+    ; Apply gravity
+    call apply_gravity
+.check_death:
+    ; Check if the player should be dead
+    call check_death
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_DEAD
+    ; If they aren't dead, finish the update
+    jp nz, .finish_update
+    ; If they are dead, call the dead_state
+    call dead_state
+.finish_update:
+  pop af
+  ret
+
+; check_ground_tile puts the map tile # in the position directly below the
+; player into the HL register
+check_ground_tile::
+  push hl
+  push de
+  push af
+.find_ground_tile:
+    ; Put the player's map tile into HL
+    call find_player_map_tile
+    ; Move down one row by adding $20 to HL
+    ld de, $20
+    add hl, de
+    ; HL now points at the tile the player is standing above
+    ; Check the tile # for this position
+    ld a, [hl]
+.check_ground_tile:
+    ; If on the ground, state is standing
+    cp a, GROUND_TILE
+    jp z, .standing
+    ; If not on the ground, falling begins
+.falling:
+    ld a, PLAYER_STATE_FALLING
+    ld [PLAYER_STATE], a
+    jp .finish
+.standing:
+    ; Set the player to be standing
+    ld a, PLAYER_STATE_STANDING
+    ld [PLAYER_STATE], a
+.finish
+  pop af
+  pop de
+  pop hl
+  ret
+
+; find_player_map_tile puts a pointer to the player's position in the map data
+; into HL. This can be used to check what tile a player is standing on (or by
+; adjusting it further, above/below/etc)
+;
+; TODO(@cpu): This should be generalized into an engine function that can be
+; referenced here.
+find_player_map_tile:
   push af
   push bc
   push de
-  push hl
-.are_you_falling:
-    ; Load the current player state into the accumulator
-    ld a, [PLAYER_STATE]
-    ; Check if the player is falling. If they aren't falling, check the tile
-    ; under them to see if they should start!
-    cp a, PLAYER_STATE_FALLING
-    jp nz, .check_tile
-.currently_falling:
-    ; Put the Player Y into A
-    ld a, [PLAYER_Y]
-    ; Increment the accumulator
-    inc a
-    ; Write the new Y back to PLAYER_Y
-    ld [PLAYER_Y], a
-.check_death:
-    ; Check the new player Y (still in the accumulator) to see if its 20
-    ; TODO(@cpu): Change 20 to a EQU
-    cp a, 20
-    ; If the player is alive, move them
-    jp nz, .move_player
-    ; Otherwise, player is dead :-(
-    ld a, PLAYER_STATE_DEAD
-    ld [PLAYER_STATE], a
-    call dead_state
-    jp .finish
-.move_player:
-    ; Put the start address of the SHADOW_OAM into HL
-    ld hl, SHADOW_OAM
-    ; Load the Y position of the first sprite into the accumulator
-    ld a, [hl]
-    ; Add 8 to the accumulator?
-    add a, $08
-    ; Put the new Y position into the sprite Y location
-    ld [hl], a
-.check_tile:
+.init_tile_search:
     ; Put the Player X into B
     ld a, [PLAYER_X]
     ld b, a
@@ -195,14 +196,14 @@ apply_gravity:
     dec a
     ; Move HL to the first map byte
     ld hl, world_one
-.move_pointer_y
+.move_pointer_y:
     ; Move the pointer ahead by 1 row ($1F)
     ld de, $20
     add hl, de
     ; Subtract from A, loop while != 0
     dec a
     jp nz, .move_pointer_y
-.move_pointer_x
+.move_pointer_x:
     ld c,b
     ld b,0
     add hl, bc
@@ -210,27 +211,95 @@ apply_gravity:
     dec l
     ; HL now points at the player tile
     ld a, [hl]
-.check_falling
-    ; Move down one row
-    ld de, $20
-    add hl, de
-    ; Check the tile # for the tile underneath the player's position on the map
-    ld a, [hl]
-    ; If on the ground, state is standing
-    cp a, GROUND_TILE
-    jp z, .standing
-    ; If not on the ground, falling begins
-    ld a, PLAYER_STATE_FALLING
-    ld [PLAYER_STATE], a
-    jp .finish
-.standing
-    ; Set the player to be standing
-    ld a, PLAYER_STATE_STANDING
-    ld [PLAYER_STATE], a
-.finish
-  pop hl
+.tile_found:
   pop de
   pop bc
+  pop af
+  ret
+
+; apply_gravity is called when the PLAYER_STATE is equal to
+; PLAYER_STATE_FALLING. It updates the player's Y
+apply_gravity:
+  push af
+    ; Check if the player is in the falling state. If they aren't finish the update.
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_FALLING
+    jp nz, .finish
+.stop_window_move:
+    ld a, $00
+    ld [WINDOW_MOVING], a
+.change_player_y:
+    ; Put the Player Y into A
+    ld a, [PLAYER_Y]
+    ; Increment the accumulator
+    inc a
+    ; Write the new Y back to PLAYER_Y
+    ld [PLAYER_Y], a
+.change_sprite_y:
+    ; Increment the sprite Y location to match
+    ; Put the start address of the SHADOW_OAM into HL. The player sprite is the
+    ; first entry of the SHADOW_OAM by convention.
+    ld hl, SHADOW_OAM
+    ; Load the Y position of the first sprite into the accumulator
+    ld a, [hl]
+    ; Add 8 to the accumulator
+    add a, $08
+    ; Put the new Y position into the sprite Y location
+    ld [hl], a
+.finish:
+  pop af
+  ret
+
+; check_death is called to see if the player's Y is equal to the PLAYER_DEATH_Y.
+; If it is, the player state is set to dead.
+check_death:
+  push af
+    ; Check the new player Y to see if its the maximum
+    ld a, [PLAYER_Y]
+    cp a, PLAYER_DEATH_Y
+    ; If the player is alive do nothing
+    jp nz, .finish
+    ; Otherwise, player state is dead :-(
+    ld a, PLAYER_STATE_DEAD
+    ld [PLAYER_STATE], a
+.finish:
+  pop af
+  ret
+
+; move_window checks if the window should be moved and if required updates its
+; position
+move_window:
+  push af
+    ; Check the WINDOW_MOVING flag
+    ld a, [WINDOW_MOVING]
+    cp $01
+    ; If it isn't $01, finish without doing anything, the window isn't moving.
+    jp nz, .finish
+    ; Otherwise, proceed with window movement
+.increment_window_position:
+    ; TODO(@cpu): Should probably check that the tile ahead is not solid here and
+    ; act accordingly?
+    ;
+    ; Advance the window position by loading the current WINDOW_X into the
+    ; accumulator, incrementing it, and then writing it back to the WINDOW_X
+    ; register.
+    ld a, [WINDOW_X]
+    inc a
+    ld [WINDOW_X], a
+    ; If the new WINDOW_X (still in the accumulator) is < 32, move the window
+    cp 32
+    jp nz, .update_window
+    ; Otherwise wrap the WINDOW_X to 0 and then move the window
+    ld a, 0
+    ld [WINDOW_X], a
+.update_window:
+    ; Get the current window X position
+    ld a, [rSCX]
+    ; Increment it by $08 to move one tile forward
+    add a, $08
+    ; Move the window
+    ld [rSCX], a
+.finish
   pop af
   ret
 

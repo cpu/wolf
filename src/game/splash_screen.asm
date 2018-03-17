@@ -22,13 +22,19 @@ splash_init::
 ; splash_tick is called during timer interrupts when the splash screen is the
 ; active screen.
 splash_tick::
+  ; TODO(@cpu): Rather than changing to world_zero after a certain # of ticks we
+  ; should show a window that has the ASCII tiles for "Press A to Start" or
+  ; something equiv and then poll joypad to decide when to do the screen
+  ; transition.
+.increment_splash_counter
   push hl
     ld hl, SPLASH_COUNTER
     ld a, [hl]
     inc a
     ld [SPLASH_COUNTER], a
   pop hl
-  cp $0F
+.check_splash_counter
+  cp SPLASH_SCREEN_WAIT
   jp nz, .continue
 .next_screen_init:
   SET_HOOK NEXT_SCREEN_INIT, world_zero_init
