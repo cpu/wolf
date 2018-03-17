@@ -43,32 +43,7 @@ engine_init::
   call interrupts_init
   ret
 
-screen_change::
-  ; Wait for vblank state
-  call wait_vblank
-
-  ; Disable the LCD so we can mutate/access VRAM
-  call lcd_off
-
-  call palette_init
-  call bg_init
-  call tiles_init
-  call oam_init
-
-  ; let the new screen init
-  call run_screen_init
-
-  ; Clear the next screen flag
-  push af
-    ld a, 0
-    ld [NEXT_SCREEN], a
-  pop af
-
-  ; Turn on the LCD
-  call lcd_on
-  ret
-
-run_screen_init:
+run_screen_init::
   ; Let the current game screen initialize
   ; Put the address of the current game screen init callback into hl
   push hl

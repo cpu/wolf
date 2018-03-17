@@ -26,70 +26,34 @@ tick_wait::
 timer_interrupt::
   ; Save AF
   push af
+.update_counter:
     ; Put the INTERRUPT_COUNTER into the accumulator
     ld a, [INTERRUPT_COUNTER]
     ; Decrement it
     dec a
     ; Write the accumulator back to the interrupt counter
     ld [INTERRUPT_COUNTER], a
+.read_joypad:
+    call read_joypad
+.check_if_tick:
     ; If not zero, jump to .finish
     jp nz, timer_interrupt_finish
     ; reset the accumulator to the default interrupt counter value
     ld a, DEFAULT_INTERRUPT_COUNTER
     ; Write the accumulator back to the interrupt counter
     ld [INTERRUPT_COUNTER], a
-
+.run_tick:
     ; Run the current screen tick
     call run_screen_tick
-
+.change_screens:
+    ; Check if a screen change is needed, and if so, do it
     call change_screens
 timer_interrupt_finish::
   pop af
   ; And return, reenabling interrupts again
   reti
 
-change_screens:
-  push hl
-  push af
-  push bc
-    ld a, [NEXT_SCREEN]
-    cp $1
-    jp nz, .continue
-.change_the_screen:
-    ; Put the address of the splash screen init handler into BC
-    ld hl, NEXT_SCREEN_INIT
-    ld b, [hl]
-    inc l
-    ld c, [hl]
-    ; Put the address of the GAME_SCREEN_INIT handler into HL
-    ld hl, GAME_SCREEN_INIT
-    ; Set the first byte of the GAME_SCREEN_INIT handler address to B, the first
-    ; byte of the splash_init address
-    ld [hl], b
-    ; Increment l to move to the second byte of the GAME_SCREEN_INIT handler
-    ; address
-    inc l
-    ; Set the second byte of the GAME_SCREEN_INIT handler address to C, the
-    ; second byte of the splash_init address
-    ld [hl], c
-
-    ld hl, NEXT_SCREEN_TICK
-    ld b, [hl]
-    inc l
-    ld c, [hl]
-
-    ld hl, GAME_SCREEN_TICK
-    ld [hl], b
-    inc l
-    ld [hl], c
-
-    call screen_change
-.continue:
-  pop bc
-  pop af
-  pop hl
-  ret
-
+; run-screen_tick runs the current GAME_SCREEN_TICK callback
 run_screen_tick::
   push hl
   push bc
@@ -110,6 +74,89 @@ run_screen_tick::
 game_tick_return::
   pop bc
   pop hl
+  ret
+
+
+; read_joypad does a thing
+read_joypad:
+  ret
+
+; change_screens checks if a NEXT_SCREEN was requested during the current screen
+; tick. It performs a screen change in this case.
+change_screens:
+  push hl
+  push af
+  push bc
+    ; Check if NEXT_SCREEN was requested
+    ld a, [NEXT_SCREEN]
+    cp $1
+    ; If it wasn't, continue
+    jp nz, .continue
+    ; Otherwise process a screen change
+.change_the_screen:
+    ; Put the address of the next screen init handler into BC
+    ld hl, NEXT_SCREEN_INIT
+    ld b, [hl]
+    inc l
+    ld c, [hl]
+    ; Put the address of the GAME_SCREEN_INIT handler into HL
+    ld hl, GAME_SCREEN_INIT
+    ; Set the first byte of the GAME_SCREEN_INIT handler address to B, the first
+    ; byte of the splash_init address
+    ld [hl], b
+    ; Increment l to move to the second byte of the GAME_SCREEN_INIT handler
+    ; address
+    inc l
+    ; Set the second byte of the GAME_SCREEN_INIT handler address to C, the
+    ; second byte of the splash_init address
+    ld [hl], c
+
+    ; Do the same trick, writing the NEXT_SCREEN_TICK into BC
+    ld hl, NEXT_SCREEN_TICK
+    ld b, [hl]
+    inc l
+    ld c, [hl]
+    ; And then juggling it into GAME_SCREEN_TICK
+    ld hl, GAME_SCREEN_TICK
+    ld [hl], b
+    inc l
+    ld [hl], c
+
+    ; Invoke the screen change
+    call screen_change
+.continue:
+  pop bc
+  pop af
+  pop hl
+  ret
+
+; screen_change transitions to vblank, disables the LCD, performs some
+; initialization (including calling the new screen's init callback), clears the
+; NEXT_SCREEN flag, and turns the LCD back on
+screen_change::
+  ; Wait for vblank state
+  call wait_vblank
+
+  ; Disable the LCD so we can mutate/access VRAM
+  call lcd_off
+
+  ; Put things back to a default state for the new screen
+  call palette_init
+  call bg_init
+  call tiles_init
+  call oam_init
+
+  ; let the new screen init
+  call run_screen_init
+
+  ; Clear the next screen flag
+  push af
+    ld a, 0
+    ld [NEXT_SCREEN], a
+  pop af
+
+  ; Turn on the LCD
+  call lcd_on
   ret
 
 ; dma_trampoline is a small bit of code used to invoke a DMA transfer from the
