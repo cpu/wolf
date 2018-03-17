@@ -15,7 +15,7 @@ of unoptimized hot trash.
 
 ### Building ROM from source
 
-To, build the room [rgbds](https://github.com/rednex/rgbds) must be installed
+To, build the ROM [rgbds](https://github.com/rednex/rgbds) must be installed
 and the `rgbasm`, `rgblink`, and `rgbfix` commands must be in your `$PATH`.
 
 1. Run `make`
