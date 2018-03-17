@@ -31,6 +31,11 @@ variables_start::
 ; SHADOW_OAM is a working area for OAM data that gets DMA'd to the real OAM
 ; memory during the vblank interrupt
 SHADOW_OAM:: ds 40 * 4
+
+; SHADOW_OAM_CHANGED is a flag indicating whether the SHADOW_OAM is dirty and
+; needs to be written to the real OAM during the vblank interrupt
+SHADOW_OAM_CHANGED:: ds 1
+
 ; INTERRUPT_COUNTER is a one byte counter that gets decremented in a timer
 ; interrup handler
 INTERRUPT_COUNTER:: ds 1
@@ -41,6 +46,9 @@ GAME_SCREEN_INIT:: ds 2
 ; GAME_SCREEN_TICK holds the callback address for the current game screen's tick
 ; handler
 GAME_SCREEN_TICK:: ds 2
+; GAME_SCREEN_VBLANK holds the callback address for the current game screen's
+; vblank handler
+GAME_SCREEN_VBLANK:: ds 2
 
 ; NEXT_SCREEN indicates whether there should be a screen change done before the
 ; next tick.
@@ -51,6 +59,9 @@ NEXT_SCREEN_INIT:: ds 2
 ; NEXT_SCREEN_TICK holds the callback address that will replace GAME_SCREEN_TICK
 ; if NEXT_SCREEN is set
 NEXT_SCREEN_TICK:: ds 2
+; NEXT_SCREEN_VBLANK holds the callback address that will replace
+; GAME_SCREEN_VBLANK if NEXT_SCREEN is set
+NEXT_SCREEN_VBLANK:: ds 2
 
 ; BUTTON_STATE holds the buttons that are currently pressed
 BUTTON_STATE:: ds 1
@@ -70,6 +81,9 @@ PLAYER_STATE:: ds 1
 
 ; Current Window X (Tile number)
 WINDOW_X:: ds 1
+
+; How far the window moved since last vblank
+WINDOW_MOVED:: ds 1
 
 ; Is the Window supposed to be moving?
 WINDOW_MOVING:: ds 1

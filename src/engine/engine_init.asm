@@ -142,7 +142,7 @@ variables_init::
     ; Set the INTERRUPT_COUNTER to the initial default value
     ld a, DEFAULT_INTERRUPT_COUNTER
     ld [INTERRUPT_COUNTER], a
-    ; Set the PLAYER_X and PLAYER_Y to the default position 
+    ; Set the PLAYER_X and PLAYER_Y to the default position
     ld a, DEFAULT_PLAYER_X
     ld [PLAYER_X], a
     ld a, DEFAULT_PLAYER_Y

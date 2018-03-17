@@ -172,6 +172,17 @@ change_screens:
     inc l
     ld [hl], c
 
+    ; Do the same trick, writing the NEXT_SCREEN_VBLANK into BC
+    ld hl, NEXT_SCREEN_VBLANK
+    ld b, [hl]
+    inc l
+    ld c, [hl]
+    ; And then juggling it into GAME_SCREEN_VBLANK
+    ld hl, GAME_SCREEN_VBLANK
+    ld [hl], b
+    inc l
+    ld [hl], c
+
     ; Invoke the screen change
     call screen_change
 .continue:
@@ -216,6 +227,12 @@ screen_change::
 ; that's the only place that is accessible and we need to access code to busyloop
 ; for DMA to finish.
 dma_trampoline::
+  ; Check if the SHADOW_OAM_CHANGED flag is true
+  ld a, [SHADOW_OAM_CHANGED]
+  cp a, $01
+  ; If it isn't, jump to no_dma
+  jp nz, .no_dma
+.dma:
   ; save AF
   push af
     ; Put the most significant byte of the source address into the accumulator
@@ -230,6 +247,38 @@ dma_trampoline::
     jr nz, .dma_wait
   ; restore AF
   pop af
+  ; Clear the SHADOW_OAM_CHANGED flag
+  ld a, $00
+  ld [SHADOW_OAM_CHANGED], a
+  ; Finish by re-enabling interrupts
+  jp .finish
+.no_dma
+  ; If there was no DMA, call the screen vblank
+  call run_screen_vblank
+.finish:
   ; Return and re-enable interrupts
   reti
 dma_trampoline_end::
+
+; run_screen_vblank runs the current GAME_SCREEN_VBLANK callback
+run_screen_vblank::
+  push hl
+  push bc
+    ; Put the address of the current game screen vblank callback into hl
+    ld hl, GAME_SCREEN_VBLANK
+    ; Load the first byte of the address GAME_SCREEN_VBLANK holds into b
+    ld b, [hl]
+    ; Increment L to get to the second byte of the GAME_SCREEN_VBLANK callback address
+    inc l
+    ; Load the second byte of the address GAME_SCREEN_VBLANK holds into C
+    ld c, [hl]
+    ; Now copy the first byte of the callback address into H
+    ld h, b
+    ; And the second byte of the callback address into C
+    ld l, c
+    ; And jump to the callback address
+    jp hl
+game_vblank_return::
+  pop bc
+  pop hl
+  ret

@@ -78,5 +78,11 @@ map:
 debug:
 	$(BGB) $(ROM_NAME).gb&
 
+record:
+	ffmpeg -f x11grab -video_size 600x620 -framerate 30 -i :0.0 -b:v 3M screen.recording.mp4
+
+record_convert:
+	ffmpeg -i screen.recording.mp4 -vcodec libx264 -pix_fmt yuv420p -strict -2 screen.recording.web.mp4
+
 # Build the ROM
 all: $(ROM_NAME)

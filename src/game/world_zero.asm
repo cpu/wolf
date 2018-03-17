@@ -29,6 +29,10 @@ world_zero_tick::
   call move_window
   jp game_tick_return
 
+world_zero_vblank::
+  call fill_mapdata
+  jp game_vblank_return
+
 ; variables_init clears variables for a fresh start
 variables_init:
   push af
@@ -50,6 +54,8 @@ variables_init:
     ld a, $00
     ld [BUTTON_STATE], a
     ld [PREV_BUTTON_STATE], a
+    ; The window moved should start cleared
+    ld [WINDOW_MOVED], a
   pop af
   ret
 
@@ -84,10 +90,6 @@ bg_load:
     ld bc, _SCRN1 - _SCRN0
     ; Copy the map data to VRAM
     call mem_Copy
-    ;ld hl, splash_map_data
-    ;ld de, _SCRN0
-    ;ld bc, splash_tile_map_size
-    ;call mem_Copy
   pop bc
   pop de
   pop hl
@@ -109,6 +111,10 @@ sprite_init:
   ; Write Sprite $01 - the moon sprite
   OAM_WRITE MOON_OAM, MOON_X, MOON_Y, MOON_TILE, $00
 
+  ; Indicate the shadow OAM contents have changed
+  ld a, $01
+  ld [SHADOW_OAM_CHANGED], a
+
   ret
 
 ; update_player checks the current player state and updates the player position
@@ -117,6 +123,8 @@ update_player:
   push af
     ; Check if the player is on ground - this will place the player into either
     ; state standing or falling
+.check_jumping:
+    call continue_jump
 .check_falling:
     ; Update the player state to falling or standing based on the ground tile
     call check_ground_tile
@@ -148,11 +156,11 @@ check_input:
     and $1
     jp z, .finish
 .a_pressed:
-    ; check if the player is already jumping
+    ; check if the player is standing
     ld a, [PLAYER_STATE]
-    cp a, PLAYER_STATE_JUMPING
-    ; if they are, skip
-    jp z, .finish
+    cp a, PLAYER_STATE_STANDING
+    ; if they aren't, skip
+    jp nz, .finish
     call player_jump
 .finish:
   pop af
@@ -181,6 +189,57 @@ player_jump:
     add a, -$08
     ; Put the new Y position into the sprite Y location
     ld [hl], a
+    ; Indicate the shadow OAM contents have changed
+    ld a, $01
+    ld [SHADOW_OAM_CHANGED], a
+  pop af
+  ret
+
+; continue_jump is the second frame of a jump
+continue_jump:
+  push af
+.is_jumping:
+    ; check if the player is jumping.
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_JUMPING
+    ; if they aren't, finish, we can't continue
+    jp z, .continue_jumping
+.is_jumped:
+    ; check if the player is jumped
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_JUMPED
+    ; if they aren't jumped, and they aren't jumping, finish
+    jp nz, .finish
+    ; if they are JUMPED, then switch to falling
+    ld a, PLAYER_STATE_FALLING
+    ld [PLAYER_STATE], a
+    ; and finish
+    jp .finish
+.continue_jumping:
+    ; Set the player state to JUMPED
+    ld a, PLAYER_STATE_JUMPED
+    ld [PLAYER_STATE], a
+    ; Set the window to moving
+    ld a, $01
+    ld [WINDOW_MOVING], a
+    ; Move the player's Y up by 1
+    ld a, [PLAYER_Y]
+    dec a
+    ld [PLAYER_Y], a
+    ; Update the sprite's Y by 8
+    ; Put the start address of the SHADOW_OAM into HL. The player sprite is the
+    ; first entry of the SHADOW_OAM by convention.
+    ld hl, SHADOW_OAM
+    ; Load the Y position of the first sprite into the accumulator
+    ld a, [hl]
+    ; Add -8 to the accumulator
+    add a, -$08
+    ; Put the new Y position into the sprite Y location
+    ld [hl], a
+    ; Indicate the shadow OAM contents have changed
+    ld a, $01
+    ld [SHADOW_OAM_CHANGED], a
+.finish:
   pop af
   ret
 
@@ -190,6 +249,9 @@ check_ground_tile:
   push hl
   push de
   push af
+    ld a, [PLAYER_STATE]
+    cp a, PLAYER_STATE_JUMPED
+    jp z, .finish
 .find_ground_tile:
     ; Put the player's map tile into HL
     call find_player_map_tile
@@ -278,7 +340,7 @@ apply_gravity:
     cp a, PLAYER_STATE_FALLING
     jp nz, .finish
 .stop_window_move:
-    ld a, $00
+    ld a, $01
     ld [WINDOW_MOVING], a
 .change_player_y:
     ; Put the Player Y into A
@@ -298,6 +360,9 @@ apply_gravity:
     add a, $08
     ; Put the new Y position into the sprite Y location
     ld [hl], a
+    ; Indicate the shadow OAM contents have changed
+    ld a, $01
+    ld [SHADOW_OAM_CHANGED], a
 .finish:
   pop af
   ret
@@ -345,6 +410,10 @@ move_window:
     ld a, 0
     ld [WINDOW_X], a
 .update_window:
+    ; Increment WINDOW_MOVED
+    ld a, [WINDOW_MOVED]
+    inc a
+    ld [WINDOW_MOVED], a
     ; Get the current window X position
     ld a, [rSCX]
     ; Increment it by $08 to move one tile forward
@@ -355,10 +424,142 @@ move_window:
   pop af
   ret
 
+; copy_mapdata fills a column of map data from world_one_two into the background
+; map during vblank. The column is placed immediately behind the window scroll to
+; hide it from the player. Each window advacement will draw one column of the
+; next map
+copy_mapdata:
+  push hl
+  push de
+  push bc
+  push af
+.init_copy:
+  ; Copy from world_one_two mapdata
+  ld hl, world_one_two
+  ; Copy into _SCRN0, the current BG map data
+  ld de, _SCRN0
+  ; The X position on the map is WINDOW_X minus one (because we just moved it
+  ; forward and we want to fill the column behind).
+  ld a, [WINDOW_X]
+  dec a
+  ; Put the X into B.
+  ld b, a
+  ; The Y position starts at 0
+  ld a, 0
+  ; Put the Y into C
+  ld c, a
+  ; Conditionally offset the HL and DE pointers by the X value
+.process_x:
+  ; Put the X position from B into A
+  ld a, b
+  ; If the X is zero, skip ahead to processing the Y offset
+  cp a, $00
+  jp z, .process_y
+  ; Otherwise perform the X offset for HL and DE
+.move_pointer_x:
+  push bc
+    ; Put X into the lower half of BC
+    ld c,a
+    ; Clear the upper half of BC
+    ld b, $00
+    ; Add X to HL
+    add hl, bc
+    ; Save the adjusted HL
+    push hl
+      ; Copy DE into HL
+      ld h, d
+      ld l, e
+      ; Adjust HL
+      add hl, bc
+      ; Copy HL back to DE
+      ld d, h
+      ld e, l
+    ; Restore the saved HL
+    pop hl
+  ; Restore saved X,Y
+  pop bc
+ ; Conditionally process the Y offset for HL and DE
+.process_y:
+  ; check if Y is zero - we skip the Y adjustment if so
+  ld a, c
+  cp a, $00
+  ; if Y is zero we're in the right place to copy data
+  jp z, .copy_data
+.move_pointer_y:
+  ; if Y is not zero, add one world width to HL and DE to account for
+  ; a single Y. Save X,Y in BC before using it for addition
+  push bc
+    ; Save the world width into BC
+    ld bc, world_one_width
+    ; Adjust HL
+    add hl, bc
+    ; Save HL on the stack so we can adjust DE
+    push hl
+      ; Copy DE into HL
+      ld h, d
+      ld l, e
+      ; Adjust HL
+      add hl, bc
+      ; Put the result back into DE
+      ld d, h
+      ld e, l
+    ; Restore the saved HL
+    pop hl
+  ; Restore the saved X,Y
+  pop bc
+.copy_data:
+  ; Read HL (the src map address) at the X,Y offset
+  ld a, [hl]
+  ; Save the HL src address on the stack
+  push hl
+    ; Swap DE (the dest map address) at the X,y offset into HL
+    ld h, d
+    ld l, e
+    ; Write the src data to the dest map
+    ld [hl], a
+  ; Restore the src address from the stack
+  pop hl
+.next_row:
+  ; Increment the Y position
+  ld a, c
+  inc a
+  ld c, a
+  ; Check if its equal to $12, the window height
+  ; if it isn't, jump back and process more of the column
+  cp a, $12
+  jp nz, .process_y
+  ; If it was $12, then we're all done.
+  pop af
+  pop bc
+  pop de
+  pop hl
+  ret
+
+; fill_mapdata is called during VBLANK interrupt when there was not a DMA.
+; If the WINDOW_MOVED flag is set then this routine will copy a new column of
+; mapdata into VRAM behind the window.
+fill_mapdata:
+  push af
+.check_fill_needed:
+    ; if the window hasn't moved there isn't any data to fill
+    ld a, [WINDOW_MOVED]
+    cp a, $00
+    jp z, .finish
+    ; If the window has moved, then copy in a new column of mapdata
+    call copy_mapdata
+.clear_fill_needed:
+    ; Clear out the WINDOW_MOVED flag
+    ld a, $00
+    ld [WINDOW_MOVED], a
+.finish:
+  pop af
+  ret
+
 ; dead_state is called when the player hits the bottom of the screen and sets up
 ; a transition back to the splash screen.
 dead_state:
   SET_HOOK NEXT_SCREEN_INIT, splash_init
   SET_HOOK NEXT_SCREEN_TICK, splash_tick
+  SET_HOOK NEXT_SCREEN_VBLANK, splash_vblank
   SET_NEXT_SCREEN 1
   ret
