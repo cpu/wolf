@@ -49,6 +49,8 @@ FIX_FLAGS = -v -p 0
 # Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
 
+NOW := $(shell date +"%Y%m%d.%H%M%S")
+
 # Build objects by assembling them from source
 %.o: %.asm
 # Assemble the source files, specifying the configured inc dir
@@ -77,6 +79,9 @@ map:
 # Run BGB to emulate/debug the built game ROM
 debug:
 	$(BGB) $(ROM_NAME).gb&
+
+snapshot:
+	cp $(ROM_NAME).gb snapshots/$(ROM_NAME).$(NOW).gb
 
 record:
 	ffmpeg -f x11grab -video_size 600x620 -framerate 30 -i :0.0 -b:v 3M screen.recording.mp4
