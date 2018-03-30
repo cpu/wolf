@@ -1,3 +1,5 @@
+![Wolf](https://binaryparadox.net/d/906c1e6f-ab5a-4c41-b56b-4098fcf6ce31.jpg)
+
 ## Wolf
 
 Wolf is a simple side scrolling platformer where the screen advances
@@ -11,15 +13,7 @@ Beyond simple experimentation Wolf is my first attempt at GB Z80 / Gameboy
 development. It will probably never be finished and the code is varying degrees
 of unoptimized hot trash.
 
-## Play Wolf
-
-Play Wolf in your browser using the
-[jsgbemu](https://sourceforge.net/projects/jsgbemu/) emulator:
-
-[![Play
-Wolf](https://binaryparadox.net/d/906c1e6f-ab5a-4c41-b56b-4098fcf6ce31.jpg)](https://binaryparadox.net/d/wolf/index.html)
-
-**Note:** Wolf is 100000% not finished so "playing" is a huge overstatement.
+Wolf is **10000%** not finished!
 
 ## Development
 
