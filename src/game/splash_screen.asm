@@ -39,11 +39,16 @@ splash_tick::
 .next_screen_init:
   SET_HOOK NEXT_SCREEN_INIT, world_zero_init
   SET_HOOK NEXT_SCREEN_TICK, world_zero_tick
+  SET_HOOK NEXT_SCREEN_VBLANK, world_zero_vblank
   SET_NEXT_SCREEN 1
   ld a, 0
   ld [SPLASH_COUNTER], a
 .continue:
   jp game_tick_return
+
+splash_vblank::
+  ; nop
+  jp game_vblank_return
 
 ; tiles_load copies initial game tile data to VRAM
 tiles_load:
