@@ -437,10 +437,6 @@ move_window:
 ; hide it from the player. Each window advacement will draw one column of the
 ; next map
 copy_mapdata:
-  push hl
-  push de
-  push bc
-  push af
 .init_copy:
   ; Copy from world_one_two mapdata
   ld hl, world_one_two
@@ -537,30 +533,32 @@ copy_mapdata:
   cp a, $12
   jp nz, .move_pointer_y
   ; If it was $12, then we're all done.
-  pop af
-  pop bc
-  pop de
-  pop hl
-  ret
+  jp clear_fill_needed
 
 ; fill_mapdata is called during VBLANK interrupt when there was not a DMA.
 ; If the WINDOW_MOVED flag is set then this routine will copy a new column of
 ; mapdata into VRAM behind the window.
 fill_mapdata:
+  push hl
+  push de
+  push bc
   push af
 .check_fill_needed:
     ; if the window hasn't moved there isn't any data to fill
     ld a, [WINDOW_MOVED]
     cp a, $00
-    jp z, .finish
+    jp z, finish
     ; If the window has moved, then copy in a new column of mapdata
-    call copy_mapdata
-.clear_fill_needed:
+    jp copy_mapdata
+clear_fill_needed:
     ; Clear out the WINDOW_MOVED flag
     ld a, $00
     ld [WINDOW_MOVED], a
-.finish:
+finish:
   pop af
+  pop bc
+  pop de
+  pop hl
   ret
 
 ; dead_state is called when the player hits the bottom of the screen and sets up
