@@ -535,7 +535,7 @@ copy_mapdata:
   ; Check if its equal to $12, the window height
   ; if it isn't, jump back and process more of the column
   cp a, $12
-  jp nz, .process_y
+  jp nz, .move_pointer_y
   ; If it was $12, then we're all done.
   pop af
   pop bc
