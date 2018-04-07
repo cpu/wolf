@@ -50,7 +50,11 @@ SOURCES = $(wildcard $(SRCDIR)/*.asm) $(wildcard $(SRCDIR)/**/*.asm)
 FIX_FLAGS = -v -p 0
 
 # If GODMODE=1 then the game will be built without gravity/death
-ASM_FLAGS = -v -D GODMODE=0
+GODMODE = 0
+
+# Default flags for $(ASM). Note the -D arg, this is equiv to `GODMODE EQU $00`
+# and allows setting a define at build time.
+ASM_FLAGS = -D GODMODE=$(GODMODE)
 
 # Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
