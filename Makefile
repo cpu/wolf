@@ -12,7 +12,7 @@ FIX = rgbfix
 WINE = wine
 
 # Location of tools EXEs
-TOOLS_ROOT = $(HOME)/wine/
+TOOLS_ROOT = $(HOME)/wine
 
 # BGB (http://bgb.bircd.org/) is the best debugger/emulator available. It's
 # designed for Windows but runs effortless under WINE. You must ensure wine is
@@ -49,7 +49,11 @@ FIX_FLAGS = -v -p 0
 # Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
 
+# Timestamp for building rom snapshots
 NOW := $(shell date +"%Y%m%d.%H%M%S")
+
+# Build the ROM
+all: $(ROM_NAME)
 
 # Build objects by assembling them from source
 %.o: %.asm
@@ -71,30 +75,30 @@ clean:
 
 # Run GBTD to edit tile data
 .PHONY: tiles
-tiles:
-	$(GBTD) res/wolf.gbr&
+tiles: res/wolf.gbr
+	$(GBTD) $<&
 
 # Run GBMD to edit map data
 .PHONY: map
-map:
-	$(GBMB) res/wolf.gbm&
+map: res/wolf.gbm
+	$(GBMB) $<&
 
 # Run BGB to emulate/debug the built game ROM
 .PHONY: debug
 debug: $(ROM_NAME)
-	$(BGB) $(ROM_NAME).gb&
+	$(BGB) $<.gb&
 
+# Build a datestamped ROM snapshot for history's sake
 .PHONY: snapshot
 snapshot: $(ROM_NAME)
-	cp $(ROM_NAME).gb snapshots/$(ROM_NAME).$(NOW).gb
+	cp $<.gb snapshots/$(ROM_NAME).$(NOW).gb
 
+# Record a fixed position of the screen into an MP4
 .PHONY: record
 record:
 	ffmpeg -f x11grab -video_size 600x620 -framerate 30 -i :0.0 -b:v 3M screen.recording.mp4
 
+# Convert a recording of the screen from MP4 to a web friendly MP4
 .PHONY: record_convert
 record_convert: screen.recording.mp4
-	ffmpeg -i screen.recording.mp4 -vcodec libx264 -pix_fmt yuv420p -strict -2 screen.recording.web.mp4
-
-# Build the ROM
-all: $(ROM_NAME)
+	ffmpeg -i $< -vcodec libx264 -pix_fmt yuv420p -strict -2 screen.recording.web.mp4
