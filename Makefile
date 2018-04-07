@@ -49,6 +49,9 @@ SOURCES = $(wildcard $(SRCDIR)/*.asm) $(wildcard $(SRCDIR)/**/*.asm)
 #   -p 0 = pad image with 0 byte
 FIX_FLAGS = -v -p 0
 
+# If GODMODE=1 then the game will be built without gravity/death
+ASM_FLAGS = -v -D GODMODE=0
+
 # Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
 
@@ -67,7 +70,7 @@ all: $(ROM_FILE)
 # Build objects by assembling them from source
 %.o: %.asm
 # Assemble the source files, specifying the configured inc dir
-	$(ASM) -i $(INCDIR)/ -o $@ $<
+	$(ASM) $(ASM_FLAGS) -i $(INCDIR)/ -o $@ $<
 
 # Build the ROM by linking the built objects and fixing the ROM
 $(ROM_FILE): $(OBJECTS)

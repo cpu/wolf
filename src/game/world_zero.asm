@@ -130,6 +130,14 @@ update_player:
     call check_ground_tile
 .check_input:
     call check_input
+    ; Check the GODMODE flag. This is provided by rgbasm in the project Makefile
+    ; with -D
+    ld a, GODMODE
+    ; If it isn't zero, then skip applying gravity or checking for death.
+    ; ~ ! !   G O D   M O D E   ! ! ~
+    cp a, 0
+    jp nz, .finish_update
+.apply_gravity:
     ; Apply gravity
     call apply_gravity
 .check_death:
