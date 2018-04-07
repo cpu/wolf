@@ -65,28 +65,35 @@ $(ROM_NAME): $(OBJECTS)
 	$(FIX) $(FIX_FLAGS) $@.gb
 
 # Clean out build artifacts
+.PHONY: clean
 clean:
 	rm $(ROM_NAME).gb $(ROM_NAME).sym $(OBJECTS)
 
 # Run GBTD to edit tile data
+.PHONY: tiles
 tiles:
 	$(GBTD) res/wolf.gbr&
 
 # Run GBMD to edit map data
+.PHONY: map
 map:
 	$(GBMB) res/wolf.gbm&
 
 # Run BGB to emulate/debug the built game ROM
-debug:
+.PHONY: debug
+debug: $(ROM_NAME)
 	$(BGB) $(ROM_NAME).gb&
 
-snapshot:
+.PHONY: snapshot
+snapshot: $(ROM_NAME)
 	cp $(ROM_NAME).gb snapshots/$(ROM_NAME).$(NOW).gb
 
+.PHONY: record
 record:
 	ffmpeg -f x11grab -video_size 600x620 -framerate 30 -i :0.0 -b:v 3M screen.recording.mp4
 
-record_convert:
+.PHONY: record_convert
+record_convert: screen.recording.mp4
 	ffmpeg -i screen.recording.mp4 -vcodec libx264 -pix_fmt yuv420p -strict -2 screen.recording.web.mp4
 
 # Build the ROM
