@@ -11,7 +11,10 @@ FIX = rgbfix
 # wine is on your PATH or update the following var to point to the wine binary
 WINE = wine
 
-# Location of tools EXEs
+# Location of tools EXEs. In this directory you should have:
+#   - bgb.exe
+#   - gbtd.exe
+#   - gbmb.exe
 TOOLS_ROOT = $(HOME)/wine
 
 # BGB (http://bgb.bircd.org/) is the best debugger/emulator available. It's
@@ -49,11 +52,17 @@ FIX_FLAGS = -v -p 0
 # Objects are SOURCES with the .asm extension replaced with .o
 OBJECTS = $(SOURCES:%.asm=%.o)
 
+# Output ROM executable file
+ROM_FILE = $(ROM_NAME).gb
+
+# The SYM_FILE is the ROM_FILE with the .gb extension replaced with .sym
+SYM_FILE = $(ROM_FILE:%.gb=%.sym)
+
 # Timestamp for building rom snapshots
 NOW := $(shell date +"%Y%m%d.%H%M%S")
 
 # Build the ROM
-all: $(ROM_NAME)
+all: $(ROM_FILE)
 
 # Build objects by assembling them from source
 %.o: %.asm
@@ -61,17 +70,17 @@ all: $(ROM_NAME)
 	$(ASM) -i $(INCDIR)/ -o $@ $<
 
 # Build the ROM by linking the built objects and fixing the ROM
-$(ROM_NAME): $(OBJECTS)
+$(ROM_FILE): $(OBJECTS)
 # Link the assembled objects, outputting to ROM_NAME.gb, writing a symfile to
 # ROM_NAME.sym
-	$(LINK) -o $@.gb -n $@.sym $(OBJECTS)
+	$(LINK) -o $@ -n $(SYM_FILE) $(OBJECTS)
 # Fix the ROM header/checksums
-	$(FIX) $(FIX_FLAGS) $@.gb
+	$(FIX) $(FIX_FLAGS) $@
 
 # Clean out build artifacts
 .PHONY: clean
 clean:
-	rm $(ROM_NAME).gb $(ROM_NAME).sym $(OBJECTS)
+	rm $(ROM_FILE) $(SYM_FILE) $(OBJECTS)
 
 # Run GBTD to edit tile data
 .PHONY: tiles
@@ -85,13 +94,13 @@ map: res/wolf.gbm
 
 # Run BGB to emulate/debug the built game ROM
 .PHONY: debug
-debug: $(ROM_NAME)
-	$(BGB) $<.gb&
+debug: $(ROM_FILE)
+	$(BGB) $<&
 
 # Build a datestamped ROM snapshot for history's sake
 .PHONY: snapshot
-snapshot: $(ROM_NAME)
-	cp $<.gb snapshots/$(ROM_NAME).$(NOW).gb
+snapshot: $(ROM_FILE)
+	cp $< snapshots/$(ROM_NAME).$(NOW).gb
 
 # Record a fixed position of the screen into an MP4
 .PHONY: record
