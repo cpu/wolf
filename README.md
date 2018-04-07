@@ -22,10 +22,15 @@ Wolf is **10000%** not finished!
 To, build the ROM [rgbds](https://github.com/rednex/rgbds) must be installed
 and the `rgbasm`, `rgblink`, and `rgbfix` commands must be in your `$PATH`.
 
-1. Run `make`
+1. Run `make`.
 1. Load `wolf.gb` into an emulator, or [onto a ROM
    cartridge](https://krikzz.com/store/home/46-everdrive-gb.html) for use in real
    hardware.
+
+To aid with testing you can also build the ROM with gravity and death disabled:
+
+1. Run `make clean` to remove any previous builds.
+1. Run `make GODMODE=1` to build no gravity or death.
 
 ### Development Tools
 
