@@ -49,6 +49,9 @@ exceptions that can be found under the **bgp control panel** under the
 ![BGB Exceptions
 Configuration](https://binaryparadox.net/d/548a91cf-d399-4db2-8035-472a36b486c6.jpg)
 
+For more information [see these BGB debugger
+tips/tricks](https://github.com/doeg/gb-skeleton/blob/master/docs/bgb.md).
+
 #### Tile Editing
 
 1. Download [GBTD](http://www.devrs.com/gb/hmgd/gbtd.html) and place `GBTD.EXE`
