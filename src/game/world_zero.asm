@@ -29,10 +29,6 @@ world_zero_tick::
   call move_window
   jp game_tick_return
 
-world_zero_vblank::
-  call fill_mapdata
-  jp game_vblank_return
-
 ; variables_init clears variables for a fresh start
 variables_init:
   push af
@@ -535,10 +531,9 @@ copy_mapdata:
   ; If it was $12, then we're all done.
   jp clear_fill_needed
 
-; fill_mapdata is called during VBLANK interrupt when there was not a DMA.
 ; If the WINDOW_MOVED flag is set then this routine will copy a new column of
 ; mapdata into VRAM behind the window.
-fill_mapdata:
+world_zero_vblank::
   push hl
   push de
   push bc
@@ -559,7 +554,7 @@ finish:
   pop bc
   pop de
   pop hl
-  ret
+  jp game_vblank_return
 
 ; dead_state is called when the player hits the bottom of the screen and sets up
 ; a transition back to the splash screen.
