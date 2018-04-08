@@ -27,11 +27,6 @@ and the `rgbasm`, `rgblink`, and `rgbfix` commands must be in your `$PATH`.
    cartridge](https://krikzz.com/store/home/46-everdrive-gb.html) for use in real
    hardware.
 
-To aid with testing you can also build the ROM with gravity and death disabled:
-
-1. Run `make clean` to remove any previous builds.
-1. Run `make GODMODE=1` to build no gravity or death.
-
 ### Development Tools
 
 For development tools [wine](https://www.winehq.org/) must be installed and the
@@ -40,6 +35,13 @@ For development tools [wine](https://www.winehq.org/) must be installed and the
 By default the `Makefile` assumes all development tools are kept in the
 `$HOME/wine` directory. If you place yours elsewhere be sure to update
 `TOOLS_ROOT` in the `Makefile`.
+
+#### Godmode
+
+To aid with testing you can also build the ROM with gravity and death disabled:
+
+1. Run `make clean` to remove any previous builds.
+1. Run `make GODMODE=1` to build with no gravity or death.
 
 #### Debugging/Emulating
 
